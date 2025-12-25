@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dark Magic Admin Dashboard</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: black;
+        color: white;
+        text-align: center;
+        padding: 20px;
+    }
+    h1 {
+        font-family: 'UnifrakturCook', cursive;
+        font-size: 30px;
+        color: red;
+    }
+    input, select {
+        width: 250px;
+        padding: 8px;
+        margin: 10px;
+        border-radius: 6px;
+        border: none;
+        font-size: 16px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #1a1a1a;
+        margin-top: 20px;
+    }
+    th, td {
+        padding: 10px;
+        border-bottom: 1px solid #444;
+    }
+    th {
+        background: red;
+        color: black;
+        font-weight: bold;
+    }
+    button {
+        padding: 6px 12px;
+        margin: 3px;
+        border: none;
+        border-radius: 6px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .approve { background: green; color: white; }
+    .decline { background: red; color: white; }
+</style>
+</head>
+
+<body>
+
+<h1>Dark Magic Admin Panel</h1>
+
+<input type="text" id="searchBox" placeholder="Search 1Win ID" onkeyup="applyFilters()">
+
+<select id="statusFilter" onchange="applyFilters()">
+    <option value="all">Show All</option>
+    <option value="pending">Pending</option>
+    <option value="activated">Approved</option>
+    <option value="declined">Declined</option>
+</select>
+
+<table>
+    <thead>
+        <tr>
+            <th>Email</th>
+            <th>1Win ID</th>
+            <th>Deposit Amount</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody id="usersList"></tbody>
+</table>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyDvFDByPPo9zgwKLdPaREz1OVMQCXmPfrs",
+    authDomain: "bets-d795d.firebaseapp.com",
+    projectId: "bets-d795d",
+    storageBucket: "bets-d795d.appspot.com",
+    messagingSenderId: "384386108287",
+    appId: "1:384386108287:android:d238a5ec8068d9bb9be84a",
+    databaseURL: "https://bets-d795d-default-rtdb.firebaseio.com"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let allUsers = [];
+
+function loadUsers() {
+    db.ref("users").on("value", snapshot => {
+        allUsers = [];
+        snapshot.forEach(child => {
+            const u = child.val();
+            if (!u.oneWinID) return;
+            allUsers.push({ key: child.key, ...u });
+        });
+        applyFilters();
+    });
+}
+
+function applyFilters() {
+    const query = document.getElementById("searchBox").value.trim().toLowerCase();
+    const filter = document.getElementById("statusFilter").value;
+
+    const filtered = allUsers.filter(u => {
+        const matchesSearch = (u.oneWinID || "").toLowerCase().includes(query);
+        const matchesStatus = 
+            filter === "all" || 
+            (u.status || "pending") === filter;
+        return matchesSearch && matchesStatus;
+    });
+
+    renderUsers(filtered);
+}
+
+function renderUsers(users) {
+    const usersList = document.getElementById("usersList");
+    usersList.innerHTML = "";
+
+    users.forEach(u => {
+        let statusText =
+            u.status === "activated" ? "✅ Approved" :
+            u.status === "declined" ? "❌ Declined" :
+            "⏳ Pending";
+
+        const deposit = u.deposit?.amount ? "$" + u.deposit.amount : "Not Submitted";
+
+        const row = `
+            <tr>
+                <td>${u.email || "N/A"}</td>
+                <td>${u.oneWinID}</td>
+                <td>${deposit}</td>
+                <td>${statusText}</td>
+                <td>
+                    <button class="approve" onclick="updateUser('${u.key}', 'activated')">Approve</button>
+                    <button class="decline" onclick="updateUser('${u.key}', 'declined')">Decline</button>
+                </td>
+            </tr>
+        `;
+        usersList.innerHTML += row;
+    });
+}
+
+function updateUser(uid, status) {
+    db.ref("users/" + uid).update({
+        status: status,
+        "deposit/status": status === "activated" ? "approved" : "declined"
+    });
+
+    alert("✅ Updated Successfully!");
+}
+
+loadUsers();
+</script>
+</body>
+</html>
