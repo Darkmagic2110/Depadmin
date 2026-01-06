@@ -51,12 +51,21 @@
     }
     .approve { background: green; color: white; }
     .decline { background: red; color: white; }
+    .block { background: orange; color: black; }
+    .unblock { background: lime; color: black; }
 </style>
 </head>
 
 <body>
 
 <h1>Dark Magic Admin Panel</h1>
+
+<!-- 🔒 Block / Unblock Site Buttons -->
+<div style="margin-bottom: 20px;">
+    <button class="block" onclick="blockSite()">Block Site</button>
+    <button class="unblock" onclick="unblockSite()">Unblock Site</button>
+    <p id="siteStatusText" style="color:yellow; font-weight:bold;"></p>
+</div>
 
 <input type="text" id="searchBox" placeholder="Search 1Win ID" onkeyup="applyFilters()">
 
@@ -98,6 +107,23 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let allUsers = [];
+
+// 🔒 Load site status
+db.ref("settings/siteStatus").on("value", snap => {
+    const status = snap.val() || "online";
+    document.getElementById("siteStatusText").innerText =
+        "Current Site Status: " + (status === "blocked" ? "❌ BLOCKED" : "✅ ONLINE");
+});
+
+function blockSite() {
+    db.ref("settings/siteStatus").set("blocked");
+    alert("🚫 DARK MAGIC AI BOT IS NOW BLOCKED");
+}
+
+function unblockSite() {
+    db.ref("settings/siteStatus").set("online");
+    alert("✅ DARK MAGIC AI BOT IS NOW ONLINE");
+}
 
 function loadUsers() {
     db.ref("users").on("value", snapshot => {
